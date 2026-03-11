@@ -1,0 +1,312 @@
+html lan<g="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時 BMI 健康分析儀 - 拉條版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-male: #3b82f6;
+            --primary-female: #ec4899;
+        }
+        body {
+            background-color: #f8fafc;
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+        }
+        .gender-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            filter: grayscale(0.5);
+            opacity: 0.7;
+        }
+        .gender-card.active-male {
+            filter: grayscale(0);
+            opacity: 1;
+            background-color: #eff6ff;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+        .gender-card.active-female {
+            filter: grayscale(0);
+            opacity: 1;
+            background-color: #fdf2f8;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.2);
+            border-color: #ec4899;
+        }
+        
+        /* 儀表板指針動畫 */
+        .gauge-container {
+            width: 200px;
+            height: 100px;
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        .gauge-bg {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(from 270deg, #fbbf24 0deg 45deg, #10b981 45deg 90deg, #f59e0b 90deg 135deg, #ef4444 135deg 180deg);
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .gauge-mask {
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .needle {
+            width: 4px;
+            height: 90px;
+            background: #1f2937;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: translateX(-50%) rotate(-90deg);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 4px;
+        }
+        .needle::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: #1f2937;
+            border-radius: 50%;
+            position: absolute;
+            bottom: -6px;
+            left: -4px;
+        }
+
+        /* 自定義滑動條樣式 (Range Slider) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        .result-box {
+            display: block;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-md overflow-hidden border border-gray-100">
+        <!-- 頭部 -->
+        <div class="pt-8 pb-4 text-center">
+            <h1 class="text-2xl font-black text-gray-800 tracking-tight">健康即時分析儀</h1>
+            <p class="text-gray-400 text-sm italic">拖動滑桿，即刻獲取建議</p>
+        </div>
+
+        <div class="px-8 pb-8">
+            <!-- 性別選擇 -->
+            <div class="flex gap-4 mb-8">
+                <div id="maleCard" class="gender-card active-male flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2" onclick="selectGender('male')">
+                    <span class="text-3xl block mb-1">♂️</span>
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Male</span>
+                </div>
+                <div id="femaleCard" class="gender-card flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2 border-transparent" onclick="selectGender('female')">
+                    <span class="text-3xl block mb-1">♀️</span>
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Female</span>
+                </div>
+            </div>
+
+            <!-- 輸入區域：滑桿式 (Range Sliders) -->
+            <div class="space-y-6">
+                <!-- 年齡 -->
+                <div class="bg-gray-50 p-5 rounded-3xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Age 年齡</label>
+                        <span id="ageDisplay" class="text-xl font-black text-gray-700">25 <small class="text-xs font-normal">歲</small></span>
+                    </div>
+                    <input type="range" id="age" min="1" max="200" value="25" oninput="calculateBMI()" class="w-full">
+                </div>
+
+                <!-- 身高 -->
+                <div class="bg-gray-50 p-5 rounded-3xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Height 身高</label>
+                        <span id="heightDisplay" class="text-xl font-black text-gray-700">170 <small class="text-xs font-normal">cm</small></span>
+                    </div>
+                    <input type="range" id="height" min="50" max="300" value="170" oninput="calculateBMI()" class="w-full">
+                </div>
+
+                <!-- 體重 -->
+                <div class="bg-gray-50 p-5 rounded-3xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Weight 體重</label>
+                        <span id="weightDisplay" class="text-xl font-black text-gray-700">60 <small class="text-xs font-normal">kg</small></span>
+                    </div>
+                    <input type="range" id="weight" min="10" max="200" value="60" oninput="calculateBMI()" class="w-full">
+                </div>
+            </div>
+
+            <!-- 結果顯示區 -->
+            <div id="resultArea" class="result-box mt-8 pt-4 border-t border-gray-50">
+                <div class="gauge-container mb-4">
+                    <div class="gauge-bg"></div>
+                    <div class="gauge-mask">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">BMI Score</span>
+                        <span id="bmiValue" class="text-3xl font-black text-gray-800">0.0</span>
+                    </div>
+                    <div id="needle" class="needle"></div>
+                </div>
+
+                <div class="text-center mb-6">
+                    <div id="statusBadge" class="inline-block px-6 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-sm">
+                        分析中...
+                    </div>
+                </div>
+                
+                <div id="adviceContainer" class="p-6 rounded-[2rem] relative overflow-hidden transition-all duration-500">
+                    <div class="relative z-10">
+                        <h3 id="adviceTitle" class="text-sm font-bold mb-2 flex items-center">
+                            <span class="bg-white/50 p-1 rounded-lg mr-2 text-xs">AI</span> 專業醫師建議
+                        </h3>
+                        <div id="adviceBox" class="text-sm leading-relaxed opacity-90 font-medium">
+                            <!-- 建議 -->
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-6xl opacity-20 font-black italic">GUIDE</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pb-6 text-center text-[10px] text-gray-300 font-bold tracking-tighter uppercase">
+            Interactive Health Lab v4.0
+        </div>
+    </div>
+
+    <script>
+        let currentGender = 'male';
+
+        window.onload = function() {
+            // 初始執行一次計算
+            calculateBMI();
+        };
+
+        function selectGender(gender) {
+            currentGender = gender;
+            document.getElementById('maleCard').className = gender === 'male' ? 'gender-card active-male flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2' : 'gender-card flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2 border-transparent';
+            document.getElementById('femaleCard').className = gender === 'female' ? 'gender-card active-female flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2' : 'gender-card flex-1 bg-gray-50 p-4 rounded-3xl text-center border-2 border-transparent';
+            
+            // 更新拉條拇指顏色 (視覺一致性)
+            const thumbColor = (gender === 'male') ? '#3b82f6' : '#ec4899';
+            const style = document.createElement('style');
+            style.innerHTML = `
+                input[type=range]::-webkit-slider-thumb { background: ${thumbColor} !important; }
+                input[type=range]::-moz-range-thumb { background: ${thumbColor} !important; }
+            `;
+            document.head.appendChild(style);
+
+            calculateBMI();
+        }
+
+        function calculateBMI() {
+            const age = parseInt(document.getElementById('age').value);
+            const h = parseInt(document.getElementById('height').value);
+            const w = parseInt(document.getElementById('weight').value);
+
+            // 更新顯示數值
+            document.getElementById('ageDisplay').innerHTML = `${age} <small class="text-xs font-normal">歲</small>`;
+            document.getElementById('heightDisplay').innerHTML = `${h} <small class="text-xs font-normal">cm</small>`;
+            document.getElementById('weightDisplay').innerHTML = `${w} <small class="text-xs font-normal">kg</small>`;
+            
+            const bmi = (w / ((h / 100) * (h / 100))).toFixed(1);
+            updateUI(bmi, age);
+        }
+
+        function updateUI(bmi, age) {
+            const bmiDisp = document.getElementById('bmiValue');
+            const statusBadge = document.getElementById('statusBadge');
+            const adviceBox = document.getElementById('adviceBox');
+            const needle = document.getElementById('needle');
+            const adviceContainer = document.getElementById('adviceContainer');
+            const adviceTitle = document.getElementById('adviceTitle');
+
+            bmiDisp.innerText = bmi;
+
+            // 計算指針旋轉角度 (15到35 為主要範圍，映射到 -90 到 90 度)
+            let angle = ((bmi - 15) / (35 - 15)) * 180 - 90;
+            angle = Math.max(-90, Math.min(90, angle));
+            needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+
+            let status = "";
+            let badgeStyle = "";
+            let advice = "";
+            let containerBg = "";
+            let textColor = "";
+
+            if (bmi < 18.5) {
+                status = "體重過輕 Underweight";
+                badgeStyle = "bg-yellow-400 text-white shadow-[0_4px_10px_rgba(250,204,21,0.3)]";
+                containerBg = "bg-yellow-50";
+                textColor = "text-yellow-900";
+                advice = age >= 65 ? "銀髮族體重過輕會增加衰弱風險，建議多攝取優質蛋白質與原型食物。" : 
+                         (currentGender === 'male' ? "建議增加熱量攝取並配合阻力訓練，以提升肌肉量與體力。" : "建議維持均衡飲食，確保有足夠的脂肪組織支持內分泌系統穩定。");
+            } else if (bmi < 24) {
+                status = "體重正常 Healthy";
+                badgeStyle = "bg-green-500 text-white shadow-[0_4px_10px_rgba(34,197,94,0.3)]";
+                containerBg = "bg-green-50";
+                textColor = "text-green-900";
+                advice = "狀態非常理想！請繼續保持現有的飲食與運動規律，維持良好的身心平衡。";
+            } else if (bmi < 27) {
+                status = "體重過重 Overweight";
+                badgeStyle = "bg-orange-500 text-white shadow-[0_4px_10px_rgba(249,115,22,0.3)]";
+                containerBg = "bg-orange-50";
+                textColor = "text-orange-900";
+                advice = currentGender === 'male' ? "體重稍高，建議減少精緻澱粉，並增加有氧與肌力交替運動。" : "體重稍微偏高，建議增加蔬菜攝取並嘗試快走或瑜珈，提升代謝率。";
+            } else {
+                status = "肥胖警告 Obese";
+                badgeStyle = "bg-red-600 text-white shadow-[0_4px_10px_rgba(220,38,38,0.3)]";
+                containerBg = "bg-red-50";
+                textColor = "text-red-900";
+                advice = "健康警報！建議諮詢醫師評估代謝風險，並嘗試『211餐盤』控制法，穩步減輕體重負擔。";
+            }
+
+            statusBadge.innerText = status;
+            statusBadge.className = `inline-block px-6 py-1.5 rounded-full text-sm font-black tracking-widest uppercase transition-all duration-300 ${badgeStyle}`;
+            adviceBox.innerText = advice;
+            adviceBox.className = `text-sm leading-relaxed opacity-90 font-medium ${textColor}`;
+            adviceTitle.className = `text-sm font-bold mb-2 flex items-center ${textColor}`;
+            adviceContainer.className = `p-6 rounded-[2rem] relative overflow-hidden transition-colors duration-500 ${containerBg}`;
+        }
+    </script>
+</body>
+</html>
