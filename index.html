@@ -1,4 +1,5 @@
-html lan<g="zh-TW">
+<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -63,8 +64,9 @@ html lan<g="zh-TW">
             left: 20px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* 調整對齊方式 */
             flex-direction: column;
+            padding-top: 25px; /* 增加頂部內距，將數值往上推 */
         }
         .needle {
             width: 4px;
@@ -77,6 +79,7 @@ html lan<g="zh-TW">
             transform: translateX(-50%) rotate(-90deg);
             transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             border-radius: 4px;
+            z-index: 20; /* 確保指針在遮罩之上 */
         }
         .needle::after {
             content: '';
@@ -182,8 +185,8 @@ html lan<g="zh-TW">
                 <div class="gauge-container mb-4">
                     <div class="gauge-bg"></div>
                     <div class="gauge-mask">
-                        <span class="text-[10px] font-bold text-gray-400 uppercase">BMI Score</span>
-                        <span id="bmiValue" class="text-3xl font-black text-gray-800">0.0</span>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">BMI Score</span>
+                        <span id="bmiValue" class="text-4xl font-black text-gray-800 leading-none">0.0</span>
                     </div>
                     <div id="needle" class="needle"></div>
                 </div>
@@ -209,7 +212,7 @@ html lan<g="zh-TW">
         </div>
 
         <div class="pb-6 text-center text-[10px] text-gray-300 font-bold tracking-tighter uppercase">
-            Interactive Health Lab v4.0
+            Interactive Health Lab v4.1
         </div>
     </div>
 
